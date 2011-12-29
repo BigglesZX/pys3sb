@@ -37,8 +37,13 @@ def validate_task(task):
         if (task['name'] and
             task['friendly_name'] and
             task['frequency'] and
-            task['s3_directory_name'] and
-            (task['database'] or task['files'])):
+            task['s3_directory_name']):
+            # this needs improvement :/
+            #try:
+            #    if (task['database'] or task['files']):
+            #        return True
+            #except KeyError:
+            #    pass
             return True
     except KeyError:
         pass
