@@ -86,7 +86,6 @@ def main():
         sys.exit(1)
     
     print "Starting pys3sb in %s mode..." % MODE
-    print "---"
     
 
     ''' 2. Sanity checks '''
@@ -125,6 +124,7 @@ def main():
     ''' 3. Process tasks '''
     task_count = 0
     for task in config.TASKS:
+        print "---"
         print "Running task '%s'..." % task['friendly_name']
     
         if not validate_task(task):
@@ -183,15 +183,18 @@ def main():
                     print "Error: file already exists at %s, did a previous operation fail?" % filepath
                     sys.exit(1)
                 exclusions = ''
-                if task['files']['exclude']:
-                    exclusions = '--exclude={'
-                    for expath in task['files']['exclude']:
-                        exclusions = '%s"%s",' % (exclusions, expath)
-                    exclusions.rstrip(',')
-                    exclusions = '%s}' % exclusions
+                try:
+                    if task['files']['exclude']:
+                        exclusions = '--exclude={'
+                        for expath in task['files']['exclude']:
+                            exclusions = '%s"%s",' % (exclusions, expath)
+                        exclusions.rstrip(',')
+                        exclusions = '%s}' % exclusions
+                        print "Archiving site (with exclusions)...",
+                    else:
+                        raise KeyError
+                except KeyError:
                     print "Archiving site...",
-                else:
-                    print "Archiving site (with exclusions)...",
                 os.system('tar -czf %s %s %s' % (filepath, exclusions, task['files']['path']))
                 print "done."
                 time.sleep(1)
@@ -206,8 +209,8 @@ def main():
         except KeyError:
             pass
     
-        print "---"
 
+    print "---"
     delta = datetime.now() - START_TIME
     print "%s task(s) completed in %s." % (task_count, readable_secs(delta.seconds))
 
