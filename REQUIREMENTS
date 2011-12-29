@@ -1,0 +1,5 @@
+# pys3sb requirements file
+#
+# run `pip install -r REQUIREMENTS` to install these dependencies
+
+boto
