@@ -69,18 +69,20 @@ def readable_secs(secs):
     
 def main():
     try:
-        opts, args = getopt(sys.argv[1:], '', ['daily', 'weekly'])
+        opts, args = getopt(sys.argv[1:], '', ['daily', 'weekly', 'monthly'])
         if opts:
             for o, a in opts:
                 if o == '--daily':
                     MODE = 'daily'
                 elif o == '--weekly':
                     MODE = 'weekly'
+                elif o == '--monthly':
+                    MODE = 'monthly'
         if not MODE:
             raise GetoptError('')
     except GetoptError:
         print "No frequency option specified."
-        print "Usage: python pys3sb [--daily | --weekly]"
+        print "Usage: python pys3sb [--daily | --weekly | --monthly]"
         sys.exit(1)
     
     print "Starting pys3sb in %s mode..." % MODE

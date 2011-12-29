@@ -20,7 +20,7 @@ Backup task definitions
 
 name: internal name for the backup task, used when creating files (required)
 friendly_name: used in messaging to refer to task (required)
-frequency: 'daily' for daily backup or 'weekly' for weekly backup (required)
+frequency: 'daily' for daily backup, 'weekly' for weekly backup or 'monthly' for monthly (required)
 s3_directory_name: name used to create directory on s3 bucket for this task (required)
 
 database: this section can be omitted to skip database backup
