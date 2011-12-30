@@ -6,7 +6,7 @@ Copy @config-sample.py@ to @config.py@ and tune the values as desired.
 
 **Prerequisites:** @mysqldump@ and @gzip@; Python 2.7 (2.6 probably works fine, but has not been tested) and boto in your environment. If you have pip installed, run @pip install -r REQUIREMENTS@ in the pyS3sb directory to automagically install boto.
 
-pyS3sb is designed to work in tandem with @cron@. Set up cron jobs to call @pys3sb@ with the @--daily@, @--weekly@ and @--monthly@ switches, something like this:
+pyS3sb is designed to work in tandem with @cron@. Set up cron jobs to call @pys3sb@ with the @--daily@, @--weekly@ and @--monthly@ options, something like this:
 
 bc. 0 0 * * * cd /path/to/pys3sb; python s3sb.py --daily
 0 0 * * 0 cd /path/to/pys3sb; python s3sb.py --weekly
@@ -15,5 +15,9 @@ bc. 0 0 * * * cd /path/to/pys3sb; python s3sb.py --daily
 This will call pyS3sb at the appropriate times and run tasks according to their defined frequency in the config file. Depending on how your environment is set up, you may need to adjust your $PATH or invoke your .bashrc file, e.g:
 
 bc. 0 0 * * * source ~/.bashrc; cd /path/to/pys3sb; python s3sb.py --daily
+
+You can also specify that a single task be run using the @--only@ option, which must be combined with the frequency of the task you wish to run. For example, to run a task named @blog-backup@ which would normally run daily, you could run:
+
+bc. $ python s3sb.py --daily --only blog-backup
 
 pyS3sb is a work in progress, so please stay tuned.

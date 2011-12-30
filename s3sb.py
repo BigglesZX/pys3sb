@@ -5,7 +5,7 @@ Reads backup tasks from the config file and executes them with the help of boto.
 
 Also requires mysqldump and gzip in the local environment.
 
-Usage: python pys3sb [--daily | --weekly]
+Usage: python pys3sb [--daily | --weekly | --monthly] [--only <taskname>]
 '''
 
 
@@ -25,6 +25,7 @@ from getopt import getopt, GetoptError
 ''' 0. Some internal config '''
 START_TIME = datetime.now()
 MODE = False
+SINGLE_TASK = False
 AWS_KEY_LENGTH = 20
 AWS_SECRET_KEY_LENGTH = 40
 TMP_DIR = '.pys3sb'
@@ -74,7 +75,7 @@ def readable_secs(secs):
     
 def main():
     try:
-        opts, args = getopt(sys.argv[1:], '', ['daily', 'weekly', 'monthly'])
+        opts, args = getopt(sys.argv[1:], '', ['daily', 'weekly', 'monthly', 'only='])
         if opts:
             for o, a in opts:
                 if o == '--daily':
@@ -83,11 +84,13 @@ def main():
                     MODE = 'weekly'
                 elif o == '--monthly':
                     MODE = 'monthly'
+                elif o == '--only':
+                    SINGLE_TASK = a
         if not MODE:
             raise GetoptError('')
     except GetoptError:
         print "No frequency option specified."
-        print "Usage: python pys3sb [--daily | --weekly | --monthly]"
+        print "Usage: python pys3sb [--daily | --weekly | --monthly] [--only <taskname>]"
         sys.exit(1)
     
     print "Starting pys3sb in %s mode..." % MODE
@@ -137,6 +140,9 @@ def main():
             sys.exit(1)
         if task['frequency'] != MODE:
             print "Skipping task: frequency %s" % task['frequency']
+            continue
+        if SINGLE_TASK and task['name'] != SINGLE_TASK:
+            print "Skipping task: single task mode specified."
             continue
         task_count = task_count + 1
         timestamp = datetime.now().strftime('%Y%m%d.%H%M%S')
