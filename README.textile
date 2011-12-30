@@ -12,6 +12,8 @@ bc. 0 0 * * * cd /path/to/pys3sb; python s3sb.py --daily
 0 0 * * 0 cd /path/to/pys3sb; python s3sb.py --weekly
 0 0 1 * * cd /path/to/pys3sb; python s3sb.py --monthly
 
-This will call pyS3sb at the appropriate times and run tasks according to their defined frequency in the config file.
+This will call pyS3sb at the appropriate times and run tasks according to their defined frequency in the config file. Depending on how your environment is set up, you may need to adjust your $PATH or invoke your .bashrc file, e.g:
 
-It's a work in progress, so please stay tuned.
+bc. 0 0 * * * source ~/.bashrc; cd /path/to/pys3sb; python s3sb.py --daily
+
+pyS3sb is a work in progress, so please stay tuned.
