@@ -77,6 +77,7 @@ def main():
     try:
         opts, args = getopt(sys.argv[1:], '', ['daily', 'weekly', 'monthly', 'only='])
         if opts:
+            SINGLE_TASK = False
             for o, a in opts:
                 if o == '--daily':
                     MODE = 'daily'
