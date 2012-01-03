@@ -67,7 +67,7 @@ def readable_secs(secs):
     
 def main():
     try:
-        opts, args = getopt(sys.argv[1:], '', ['daily', 'weekly', 'monthly', 'only='])
+        opts, args = getopt(sys.argv[1:], '', ['daily', 'weekly', 'monthly', 'test', 'only='])
         if opts:
             SINGLE_TASK = False
             for o, a in opts:
@@ -77,6 +77,8 @@ def main():
                     MODE = 'weekly'
                 elif o == '--monthly':
                     MODE = 'monthly'
+                elif o == '--test':
+                    MODE = 'test'
                 elif o == '--only':
                     SINGLE_TASK = a
         if not MODE:
@@ -125,6 +127,14 @@ def main():
     ''' 3. Process tasks '''
     task_count = 0
     for task in config.TASKS:
+        if MODE == 'test':
+            if validate_task(task):
+                print "Task '%s' tested OK" % task['friendly_name']
+            else:
+                print "Task '%s' failed testing" % task['friendly_name']
+            continue
+        
+            
         print "---"
         print "Running task '%s'..." % task['friendly_name']
     
