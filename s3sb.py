@@ -34,20 +34,12 @@ TMP_DIR_PERMISSIONS = 0700
 ''' 1. Some helper functions '''
 def validate_task(task):
     ''' Check a task definition for basic validity. '''
-    try:
-        if (task['name'] and
-            task['friendly_name'] and
-            task['frequency'] and
-            task['s3_directory_name']):
-            # this needs improvement :/
-            #try:
-            #    if (task['database'] or task['files']):
-            #        return True
-            #except KeyError:
-            #    pass
+    if ('name' in task and
+        'friendly_name' in task and
+        'frequency' in task and
+        's3_directory_name' in task and
+        ('database' in task or 'files' in task)):
             return True
-    except KeyError:
-        pass
     return False
 
 def readable_size(size):
@@ -148,80 +140,65 @@ def main():
         task_count = task_count + 1
         timestamp = datetime.now().strftime('%Y%m%d.%H%M%S')
     
-        try:
-            if task['database']:
-                try:
-                    if not (task['database']['hostname'] and
-                            task['database']['username'] and
-                            task['database']['password'] and
-                            task['database']['name']):
-                        raise KeyError
-                except KeyError:
-                    print "Error: missing some database details, please check your config file."
-                    sys.exit(1)
-                    
-                filename = '%s.db.%s.sql.gz' % (task['name'], timestamp)
-                filepath = os.path.join(TMP_DIR, filename)
-                if os.path.exists(filepath):
-                    print "Error: file already exists at %s, did a previous operation fail?" % filepath
-                    sys.exit(1)
-                print "Dumping database...",
-                os.system('mysqldump -h %s -u %s -p%s --opt %s | gzip > %s' % (task['database']['hostname'], task['database']['username'], task['database']['password'], task['database']['name'], filepath))
-                print "done."
-                time.sleep(1)
-        
-                print "Uploading database dump...",
-                s3_obj = Key(bucket)
-                s3_obj.key = '%s/%s' % (task['s3_directory_name'], filename)
-                s3_obj.set_contents_from_filename(filepath)
-                print "done, %s uploaded." % readable_size(os.path.getsize(filepath))
-        
-                os.remove(filepath)
-        except KeyError:
-            pass
-        
-        try:
-            if task['files']:
-                try:
-                    if not task['files']['path']:
-                        raise KeyError
-                except KeyError:
-                    print "Error: missing path to site files, please check your config file."
-                    sys.exit(1)
-        
-                filename = '%s.files.%s.tar.gz' % (task['name'], timestamp)
-                filepath = os.path.join(TMP_DIR, filename)
-                if os.path.exists(filepath):
-                    print "Error: file already exists at %s, did a previous operation fail?" % filepath
-                    sys.exit(1)
-                exclusions = ''
-                try:
-                    if task['files']['exclude']:
-                        exclusions = '--exclude={'
-                        for expath in task['files']['exclude']:
-                            exclusions = '%s"%s",' % (exclusions, expath)
-                        exclusions.rstrip(',')
-                        exclusions = '%s}' % exclusions
-                        print "Archiving site (with exclusions)...",
-                    else:
-                        raise KeyError
-                except KeyError:
-                    print "Archiving site...",
-                os.system('tar -czf %s %s %s' % (filepath, exclusions, task['files']['path']))
-                print "done."
-                time.sleep(1)
-        
-                print "Uploading site archive...",
-                s3_obj = Key(bucket)
-                s3_obj.key = '%s/%s' % (task['s3_directory_name'], filename)
-                s3_obj.set_contents_from_filename(filepath)
-                print "done, %s uploaded." % readable_size(os.path.getsize(filepath))
-        
-                os.remove(filepath)
-        except KeyError:
-            pass
+        if 'database' in task:
+            if not ('hostname' in task['database'] and
+                    'username' in task['database'] and
+                    'password' in task['database'] and
+                    'name' in task['database']):
+                print "Error: missing some database details, please check your config file."
+                sys.exit(1)
+                
+            filename = '%s.db.%s.sql.gz' % (task['name'], timestamp)
+            filepath = os.path.join(TMP_DIR, filename)
+            if os.path.exists(filepath):
+                print "Error: file already exists at %s, did a previous operation fail?" % filepath
+                sys.exit(1)
+            print "Dumping database...",
+            os.system('mysqldump -h %s -u %s -p%s --opt %s | gzip > %s' % (task['database']['hostname'], task['database']['username'], task['database']['password'], task['database']['name'], filepath))
+            print "done."
+            time.sleep(1)
     
-
+            print "Uploading database dump...",
+            s3_obj = Key(bucket)
+            s3_obj.key = '%s/%s' % (task['s3_directory_name'], filename)
+            s3_obj.set_contents_from_filename(filepath)
+            print "done, %s uploaded." % readable_size(os.path.getsize(filepath))
+    
+            os.remove(filepath)
+        
+        if 'files' in task:
+            if not 'path' in task['files']:
+                print "Error: missing path to site files, please check your config file."
+                sys.exit(1)
+    
+            filename = '%s.files.%s.tar.gz' % (task['name'], timestamp)
+            filepath = os.path.join(TMP_DIR, filename)
+            if os.path.exists(filepath):
+                print "Error: file already exists at %s, did a previous operation fail?" % filepath
+                sys.exit(1)
+            exclusions = ''
+            if 'exclude' in task['files'] and task['files']['exclude']:
+                exclusions = '--exclude={'
+                for expath in task['files']['exclude']:
+                    exclusions = '%s"%s",' % (exclusions, expath)
+                exclusions.rstrip(',')
+                exclusions = '%s}' % exclusions
+                print "Archiving site (with exclusions)...",
+            else:
+                print "Archiving site...",
+                
+            os.system('tar -czf %s %s %s' % (filepath, exclusions, task['files']['path']))
+            print "done."
+            time.sleep(1)
+    
+            print "Uploading site archive...",
+            s3_obj = Key(bucket)
+            s3_obj.key = '%s/%s' % (task['s3_directory_name'], filename)
+            s3_obj.set_contents_from_filename(filepath)
+            print "done, %s uploaded." % readable_size(os.path.getsize(filepath))
+    
+            os.remove(filepath)
+    
     print "---"
     delta = datetime.now() - START_TIME
     print "%s task(s) completed in %s." % (task_count, readable_secs(delta.seconds))
