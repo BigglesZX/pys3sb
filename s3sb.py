@@ -10,14 +10,12 @@ Usage: python pys3sb [--daily | --weekly | --monthly] [--only <taskname>]
 
 
 import os
-os.umask(077)
+os.umask(0o077)
 
-import boto
+import boto3
 import config
 import sys
 import time
-from boto.s3.key import Key
-from boto.s3.bucket import Bucket
 from datetime import datetime
 from getopt import getopt, GetoptError
 
@@ -29,7 +27,7 @@ SINGLE_TASK = False
 AWS_KEY_LENGTH = 20
 AWS_SECRET_KEY_LENGTH = 40
 TMP_DIR = '.pys3sb'
-TMP_DIR_PERMISSIONS = 0700
+TMP_DIR_PERMISSIONS = 0o0700
 
 ''' 1. Some helper functions '''
 def validate_task(task):
@@ -38,8 +36,8 @@ def validate_task(task):
         'friendly_name' in task and
         'frequency' in task and
         's3_directory_name' in task and
-        ('database' in task or 'files' in task)):
-            return True
+            ('database' in task or 'files' in task)):
+        return True
     return False
 
 def readable_size(size):
@@ -84,32 +82,32 @@ def main():
         if not MODE:
             raise GetoptError('')
     except GetoptError:
-        print "No frequency option specified."
-        print "Usage: python pys3sb [--daily | --weekly | --monthly] [--only <taskname>]"
+        print("No frequency option specified.")
+        print("Usage: python pys3sb [--daily | --weekly | --monthly] [--only <taskname>]")
         sys.exit(1)
 
-    print "Starting pys3sb in %s mode..." % MODE
+    print("Starting pys3sb in %s mode..." % MODE)
 
 
     ''' 2. Sanity checks '''
     if not config.AWS_KEY:
-        print "Error: AWS_KEY is not defined in your config file."
+        print("Error: AWS_KEY is not defined in your config file.")
         sys.exit(1)
     if len(config.AWS_KEY) != AWS_KEY_LENGTH:
-        print "Warning: AWS_KEY doesn't match the expected length of %s chars." % AWS_KEY_LENGTH
+        print("Warning: AWS_KEY doesn't match the expected length of %s chars." % AWS_KEY_LENGTH)
 
     if not config.AWS_SECRET_KEY:
-        print "Error: AWS_SECRET_KEY is not defined in your config file."
+        print("Error: AWS_SECRET_KEY is not defined in your config file.")
         sys.exit(1)
     if len(config.AWS_SECRET_KEY) != AWS_SECRET_KEY_LENGTH:
-        print "Warning: AWS_SECRET_KEY doesn't match the expected length of %s chars." % AWS_SECRET_KEY_LENGTH
+        print("Warning: AWS_SECRET_KEY doesn't match the expected length of %s chars." % AWS_SECRET_KEY_LENGTH)
 
     if not config.S3_BUCKET:
-        print "Error: S3_BUCKET is not defined in your config file."
+        print("Error: S3_BUCKET is not defined in your config file.")
         sys.exit(1)
 
     if not config.TASKS:
-        print "Error: no TASKS defined in your config file."
+        print("Error: no TASKS defined in your config file.")
         sys.exit(1)
 
     if not os.path.exists(TMP_DIR):
@@ -117,11 +115,14 @@ def main():
             os.makedirs(TMP_DIR)
             os.chmod(TMP_DIR, TMP_DIR_PERMISSIONS)
         except OSError:
-            print "Couldn't create temporary working directory %s, do we have write permission?"
+            print("Couldn't create temporary working directory %s, do we have write permission?")
             sys.exit(1)
 
-    s3_connection = boto.connect_s3(config.AWS_KEY, config.AWS_SECRET_KEY)
-    bucket = Bucket(s3_connection, config.S3_BUCKET)
+    s3_client = boto3.client(
+        's3',
+        aws_access_key_id=config.AWS_KEY,
+        aws_secret_access_key=config.AWS_SECRET_KEY
+    )
 
 
     ''' 3. Process tasks '''
@@ -129,23 +130,23 @@ def main():
     for task in config.TASKS:
         if MODE == 'test':
             if validate_task(task):
-                print "Task '%s' tested OK" % task['friendly_name']
+                print("Task '%s' tested OK" % task['friendly_name'])
             else:
-                print "Task '%s' failed testing" % task['friendly_name']
+                print("Task '%s' failed testing" % task['friendly_name'])
             continue
 
 
-        print "---"
-        print "Running task '%s'..." % task['friendly_name']
+        print("---")
+        print("Running task '%s'..." % task['friendly_name'])
 
         if not validate_task(task):
-            print "Error: task failed validation - please check it against the sample config file to ensure all required fields are present."
+            print("Error: task failed validation - please check it against the sample config file to ensure all required fields are present.")
             sys.exit(1)
         if task['frequency'] != MODE:
-            print "Skipping task: frequency %s" % task['frequency']
+            print("Skipping task: frequency %s" % task['frequency'])
             continue
         if SINGLE_TASK and task['name'] != SINGLE_TASK:
-            print "Skipping task: single task mode specified."
+            print("Skipping task: single task mode specified.")
             continue
         task_count = task_count + 1
         timestamp = datetime.now().strftime('%Y%m%d.%H%M%S')
@@ -155,36 +156,35 @@ def main():
                     'username' in task['database'] and
                     'password' in task['database'] and
                     'name' in task['database']):
-                print "Error: missing some database details, please check your config file."
+                print("Error: missing some database details, please check your config file.")
                 sys.exit(1)
 
             filename = '%s.db.%s.sql.gz' % (task['name'], timestamp)
             filepath = os.path.join(TMP_DIR, filename)
             if os.path.exists(filepath):
-                print "Error: file already exists at %s, did a previous operation fail?" % filepath
+                print("Error: file already exists at %s, did a previous operation fail?" % filepath)
                 sys.exit(1)
-            print "Dumping database...",
+            print("Dumping database...", end='')
             os.system('mysqldump -h %s -u %s -p%s --no-tablespaces %s | gzip > %s' % (task['database']['hostname'], task['database']['username'], task['database']['password'], task['database']['name'], filepath))
-            print "done."
+            print("done.")
             time.sleep(1)
 
-            print "Uploading database dump...",
-            s3_obj = Key(bucket)
-            s3_obj.key = '%s/%s' % (task['s3_directory_name'], filename)
-            s3_obj.set_contents_from_filename(filepath)
-            print "done, %s uploaded." % readable_size(os.path.getsize(filepath))
+            print("Uploading database dump...", end='')
+            object_name = '%s/%s' % (task['s3_directory_name'], filename)
+            s3_client.upload_file(filepath, config.S3_BUCKET, object_name)
+            print("done, %s uploaded." % readable_size(os.path.getsize(filepath)))
 
             os.remove(filepath)
 
         if 'files' in task:
-            if not 'path' in task['files']:
-                print "Error: missing path to site files, please check your config file."
+            if 'path' not in task['files']:
+                print("Error: missing path to site files, please check your config file.")
                 sys.exit(1)
 
             filename = '%s.files.%s.tar.gz' % (task['name'], timestamp)
             filepath = os.path.join(TMP_DIR, filename)
             if os.path.exists(filepath):
-                print "Error: file already exists at %s, did a previous operation fail?" % filepath
+                print("Error: file already exists at %s, did a previous operation fail?" % filepath)
                 sys.exit(1)
             exclusions = ''
             if 'exclude' in task['files'] and task['files']['exclude']:
@@ -193,25 +193,24 @@ def main():
                     exclusions = '%s"%s",' % (exclusions, expath)
                 exclusions.rstrip(',')
                 exclusions = '%s}' % exclusions
-                print "Archiving site (with exclusions)...",
+                print("Archiving site (with exclusions)...", end='')
             else:
-                print "Archiving site...",
+                print("Archiving site...", end='')
 
             os.system('tar -czf %s %s %s' % (filepath, exclusions, task['files']['path']))
-            print "done."
+            print("done.")
             time.sleep(1)
 
-            print "Uploading site archive...",
-            s3_obj = Key(bucket)
-            s3_obj.key = '%s/%s' % (task['s3_directory_name'], filename)
-            s3_obj.set_contents_from_filename(filepath)
-            print "done, %s uploaded." % readable_size(os.path.getsize(filepath))
+            print("Uploading site archive...", end='')
+            object_name = '%s/%s' % (task['s3_directory_name'], filename)
+            s3_client.upload_file(filepath, config.S3_BUCKET, object_name)
+            print("done, %s uploaded." % readable_size(os.path.getsize(filepath)))
 
             os.remove(filepath)
 
-    print "---"
+    print("---")
     delta = datetime.now() - START_TIME
-    print "%s task(s) completed in %s." % (task_count, readable_secs(delta.seconds))
+    print("%s task(s) completed in %s." % (task_count, readable_secs(delta.seconds)))
 
 
 if __name__ == "__main__":

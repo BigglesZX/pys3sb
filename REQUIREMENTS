@@ -2,4 +2,4 @@
 #
 # run `pip install -r REQUIREMENTS` to install these dependencies
 
-boto
+boto3

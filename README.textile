@@ -4,7 +4,7 @@ pyS3sb is a Python rewrite of "s3sb":http://github.com/BigglesZX/s3sb, a basic s
 
 Copy/rename @config-sample.py@ to @config.py@ and tune the values as desired. If using a shared hosting environment, **please** remember to check the permissions for @config.py@ to ensure it can't be read by other users if necessary. @$ chmod 600 config.py@ should do the trick.
 
-**Prerequisites:** @mysqldump@ and @gzip@; Python 2.7 (2.6 probably works fine, but has not been tested) and boto in your environment. If you have pip installed, run @pip install -r REQUIREMENTS@ in the pyS3sb directory to automagically install boto.
+**Prerequisites:** @mysqldump@ and @gzip@; Python 3; and @boto3@ in your environment. If you have pip installed, run @pip install -r REQUIREMENTS@ in the pyS3sb directory to automagically install @boto3@. See the @python2@ branch for a legacy version of the tool that uses Python 2.
 
 pyS3sb is designed to work in tandem with @cron@. Set up cron jobs to call @pys3sb@ with the @--daily@, @--weekly@ and @--monthly@ options, something like this:
 
